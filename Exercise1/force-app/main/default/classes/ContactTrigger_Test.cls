@@ -1,8 +1,22 @@
+/**
+ * File:        ContactTrigger_Test.cls
+ * Date:        Jan 11, 2023
+ * Created By:  Cagri Kilic
+ * *************************************************************************
+ * Description: ContactTrigger test class
+ * *************************************************************************
+ * History:
+ * Date:            Modified By:           Description:
+ */
 @isTest
 public with sharing class ContactTrigger_Test {
     private static Integer numberOfContacts = 5;
     private static Account testAccount;
-
+    /**
+     * @author Cagri Kilic
+     * @date Jan 11, 2023
+     * @description  init test data
+     */
     private static void init(String actionToInit) {
         switch on actionToInit {
             when 'scenario1' {
@@ -45,7 +59,11 @@ public with sharing class ContactTrigger_Test {
             }
         }
     }
-  
+    /**
+     * @author Cagri Kilic
+     * @date Jan 11, 2023
+     * @description testInsertContactScenario1 function's test function
+     */
     @IsTest
     private static void testInsertContactScenario1() {
         init('scenario1');
@@ -76,7 +94,11 @@ public with sharing class ContactTrigger_Test {
         System.assertEquals(7, [SELECT COUNT() FROM Contact]);
         System.assert(srList[2].getErrors() != null);
     }
-   
+    /**
+     * @author Cagri Kilic
+     * @date Jan 11, 2023
+     * @description testInsertContactScenario2 function's test function
+     */
     @IsTest
     private static void testInsertContactScenario2() {
         init('scenario2');
@@ -104,7 +126,11 @@ public with sharing class ContactTrigger_Test {
         System.assertEquals(7, [SELECT COUNT() FROM Contact]);
         System.assert(srList[0].getErrors() != null);
     }
-
+    /**
+     * @author Cagri Kilic
+     * @date Jan 11, 2023
+     * @description testUpdateContactScenario1 function's test function
+     */
     @IsTest
     private static void testUpdateContactScenario1() {
         init('scenario1');
@@ -139,7 +165,11 @@ public with sharing class ContactTrigger_Test {
             );
         }
     }
-
+    /**
+     * @author Cagri Kilic
+     * @date Jan 11, 2023
+     * @description testUpdateContactScenario2 function's test function
+     */
     @IsTest
     private static void testUpdateContactScenario2() {
         init('scenario2');
