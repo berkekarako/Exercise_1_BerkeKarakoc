@@ -1,25 +1,9 @@
-/******************************************************************************
- * @Name         : ContactTriggerHandler
- * @Description  : Methods of Contact Trigger
- * @Created By   : Cagri Kilic
- * @Created Date : Jan 06, 2023
- * @Modification Log :
- ******************************************************************************
- * Version        Developer        Date        Description
- *------------------------------------------------------------
- *
- *****************************************************************************/
+
 public with sharing class ContactTriggerHandler {
     private static final String INSERT_CONTACTS_ERROR = 'The contact cannot be created because there is an already existing primary contact!';
     private static final String UPDATE_CONTACTS_ERROR = 'The contact cannot be updated because there is an already existing primary contact!';
 
-    /******************************************************************************
-     * @Name         : validatePrimaryBeforeInsert
-     * @Description  : Method of Before Insert Trigger
-     * @Created By   : CagriKilic
-     * @Created Date : Jan 06, 2023
-     * @Param con    : List<Contact> - Contact list
-     *****************************************************************************/
+   
     public void validatePrimaryBeforeInsert(List<Contact> con) {
         try {
             Map<Id, Contact> primaryContacts = new Map<Id, Contact>();
@@ -46,14 +30,7 @@ public with sharing class ContactTriggerHandler {
             System.debug('Error: ' + e);
         }
     }
-    /******************************************************************************
-     * @Name         : findOldContacts
-     * @Description  : Function that Finds Old Contacts
-     * @Created By   : CagriKilic
-     * @Created Date : Jan 11, 2023
-     * @Param accIds    : List<Id> - Account Id list
-     * @Param isPrimary : Boolean - Value of Is_Primary_Contact__c
-     *****************************************************************************/
+   
     private static List<Contact> findOldContacts(List<Id> accIds, Boolean isPrimary) {
         try {
             List<Contact> oldContact = [
@@ -69,13 +46,7 @@ public with sharing class ContactTriggerHandler {
             return new List<Contact>();
         }
     }
-    /******************************************************************************
-     * @Name         : processPrimaryAfterInsert
-     * @Description  : Method of After Insert Trigger
-     * @Created By   : CagriKilic
-     * @Created Date : Jan 06, 2023
-     * @Param con    : List<Contact> - Contact list
-     *****************************************************************************/
+   
     public void processPrimaryAfterInsert(List<Contact> con) {
         try {
             List<Id> conIds = new List<Id>();
@@ -91,13 +62,7 @@ public with sharing class ContactTriggerHandler {
             System.debug('Error: ' + e);
         }
     }
-    /******************************************************************************
-     * @Name         : processPrimaryAfterInsertAndUpdateAsync
-     * @Description  : Async Method of After Insert and Update Trigger
-     * @Created By   : CagriKilic
-     * @Created Date : Jan 06, 2023
-     * @Param con    : List<Id> - Contact Ids
-     *****************************************************************************/
+    
     @future
     private static void processPrimaryAfterInsertAndUpdateAsync(List<Id> conIds) {
         try {
@@ -135,14 +100,7 @@ public with sharing class ContactTriggerHandler {
             System.debug('Error: ' + e);
         }
     }
-    /******************************************************************************
-     * @Name               : validatePrimaryBeforeUpdate
-     * @Description        : Method of Before Update Trigger
-     * @Created By         : CagriKilic
-     * @Created Date       : Jan 06, 2023
-     * @Param con          : List<Contact> - Contact list
-     * @Param conOldMap    : Map<Id, Contact> - Map of contacts before the update
-     *****************************************************************************/
+  
     public void validatePrimaryBeforeUpdate(List<Contact> con, Map<Id, Contact> conOldMap) {
         try {
             Map<Id, Contact> primaryContacts = new Map<Id, Contact>();
@@ -171,13 +129,7 @@ public with sharing class ContactTriggerHandler {
             System.debug('Error: ' + e);
         }
     }
-    /******************************************************************************
-     * @Name         : processPrimaryAfterUpdate
-     * @Description  : Method of After Update Trigger
-     * @Created By   : CagriKilic
-     * @Created Date : Jan 06, 2023
-     * @Param con    : List<Contact> - Contact list
-     *****************************************************************************/
+  
     public void processPrimaryAfterUpdate(List<Contact> con) {
         try {
             List<Id> conIds = new List<Id>();

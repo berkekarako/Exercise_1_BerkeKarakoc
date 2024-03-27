@@ -1,0 +1,52 @@
+<apex:page standardController="Account" extensions="SetPrimaryContactController" docType="html-5.0">
+    <apex:pageMessages id="msgId"></apex:pageMessages>
+    <script type="text/javascript">
+        function confirmSetPrimaryContact() {
+            return confirm("Are you sure you want to make contact primary?");
+        }
+    </script>
+    <apex:form>
+        <apex:pageBlock title="Account Primary Contact">
+            <apex:pageBlockSection columns="2">
+                <apex:inputField value="{!Account.Name}" />
+                <apex:inputField value="{!Account.AccountNumber}" />
+                <apex:inputField value="{!Account.Type}" />
+                <apex:inputField value="{!Account.Active__c}" />
+                <apex:inputField value="{!Account.Phone}" />
+                <apex:inputField value="{!Account.Fax}" />
+            </apex:pageBlockSection>
+            <apex:pageBlockButtons>
+                <apex:commandButton action="{!save}" value="Save" />
+                <apex:commandButton action="{!cancel}" value="Cancel" />
+            </apex:pageBlockButtons>
+        </apex:pageBlock>
+    </apex:form>
+    <apex:form>
+        <apex:pageBlock title="Search related contacts">
+            <apex:inputText value="{!searchKey}" label="Input" />
+            <apex:commandButton value="Search" reRender="contacts_list,msgId" action="{!doSearch}" />
+        </apex:pageBlock>
+
+        <apex:pageBlock title="Related Contacts">
+            <apex:pageBlockTable value="{!contacts}" var="ct" id="contacts_list">
+                <apex:column value="{!ct.Name}" />
+                <apex:column value="{!ct.Title}" />
+                <apex:column value="{!ct.Phone}" />
+                <apex:column value="{!ct.Is_Primary_Contact__c}" />
+                <apex:column rendered="{!!ct.Is_Primary_Contact__c}">
+                    <apex:commandLink value="Set As Primary" action="{!setPrimaryContact}" onclick="if (!confirmSetPrimaryContact()) return false;"
+                        reRender="contacts_list,msgId">
+                        <apex:param name="contactId" value="{!ct.Id}" assignTo="{!contactId}" />
+                    </apex:commandLink>
+                </apex:column>
+                <apex:column rendered="{!ct.Is_Primary_Contact__c}">
+                    <span class="slds-icon_container slds-icon-standard-opportunity-contact-role">
+                        <svg class="slds-icon slds-icon_x-small" aria-hidden="true">
+                            <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{!URLFOR($Asset.SLDS, 'assets/icons/standard-sprite/svg/symbols.svg#opportunity_contact_role')}"></use>
+                        </svg>
+                    </span>
+                </apex:column>
+            </apex:pageBlockTable>
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>
