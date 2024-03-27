@@ -1,148 +1,103 @@
-
 public with sharing class ContactTriggerHandler {
     private static final String INSERT_CONTACTS_ERROR = 'The contact cannot be created because there is an already existing primary contact!';
     private static final String UPDATE_CONTACTS_ERROR = 'The contact cannot be updated because there is an already existing primary contact!';
 
-   
-    public void validatePrimaryBeforeInsert(List<Contact> con) {
-        try {
-            Map<Id, Contact> primaryContacts = new Map<Id, Contact>();
-            List<Id> accIds = new List<Id>();
-            List<Contact> newPrimaryContacts = new List<Contact>();
-            for (Contact c : con) {
-                if (c.Is_Primary_Contact__c) {
-                    accIds.add(c.AccountId);
-                    newPrimaryContacts.add(c);
-                }
-            }
-            List<Contact> oldContact = findOldContacts(accIds, true);
-            for (Contact c : oldContact) {
-                primaryContacts.put(c.AccountId, c);
-            }
-            for (Contact c : newPrimaryContacts) {
-                if (primaryContacts.containsKey(c.AccountId)) {
-                    c.Is_Primary_Contact__c.addError(INSERT_CONTACTS_ERROR);
+    public void validatePrimaryBeforeInsert(List<Contact> contacts) {
+        Map<Id, Integer> accountPrimaryCount = new Map<Id, Integer>();
+        for (Contact con : contacts) {
+            if (con.Is_Primary_Contact__c) {
+                if (!accountPrimaryCount.containsKey(con.AccountId)) {
+                    accountPrimaryCount.put(con.AccountId, 1);
                 } else {
-                    primaryContacts.put(c.AccountId, c);
+                    throw new ContactTriggerException(INSERT_CONTACTS_ERROR);
                 }
             }
-        } catch (Exception e) {
-            System.debug('Error: ' + e);
+        }
+
+        List<Contact> existingPrimaryContacts = [
+            SELECT Id, AccountId
+            FROM Contact
+            WHERE AccountId IN :accountPrimaryCount.keySet() AND Is_Primary_Contact__c = true
+        ];
+        for (Contact con : existingPrimaryContacts) {
+            if (accountPrimaryCount.containsKey(con.AccountId)) {
+                throw new ContactTriggerException(INSERT_CONTACTS_ERROR);
+            }
         }
     }
-   
-    private static List<Contact> findOldContacts(List<Id> accIds, Boolean isPrimary) {
-        try {
-            List<Contact> oldContact = [
-                SELECT Id, Name, Is_Primary_Contact__c, AccountId
-                FROM Contact
-                WHERE
-                    Is_Primary_Contact__c = :isPrimary
-                    AND AccountId IN :accIds
-            ];
-            return oldContact;
-        } catch (Exception e) {
-            System.debug('Error: ' + e);
-            return new List<Contact>();
-        }
-    }
-   
-    public void processPrimaryAfterInsert(List<Contact> con) {
-        try {
-            List<Id> conIds = new List<Id>();
-            for (Contact c : con) {
-                if (c.Is_Primary_Contact__c) {
-                    conIds.add(c.Id);
+
+    public void validatePrimaryBeforeUpdate(List<Contact> newContacts, Map<Id, Contact> oldContactsMap) {
+        for (Contact newCon : newContacts) {
+            Contact oldCon = oldContactsMap.get(newCon.Id);
+            if (newCon.Is_Primary_Contact__c != oldCon.Is_Primary_Contact__c && newCon.Is_Primary_Contact__c == true) {
+                // Check if there's another primary contact for the same account
+                Integer existingPrimaryCount = [
+                    SELECT count()
+                    FROM Contact
+                    WHERE AccountId = :newCon.AccountId AND Is_Primary_Contact__c = true AND Id != :newCon.Id
+                ];
+                if (existingPrimaryCount > 0) {
+                    throw new ContactTriggerException(UPDATE_CONTACTS_ERROR);
                 }
             }
-            if (!System.IsBatch() && !System.isFuture()) {
-                processPrimaryAfterInsertAndUpdateAsync(conIds);
+        }
+    }
+
+    public void processPrimaryAfterInsert(List<Contact> contacts) {
+        Set<Id> accountIds = new Set<Id>();
+        for (Contact con : contacts) {
+            if (con.Is_Primary_Contact__c) {
+                accountIds.add(con.AccountId);
             }
-        } catch (Exception e) {
-            System.debug('Error: ' + e);
+        }
+        updateContactsAsync(new List<Id>(accountIds));
+    }
+
+    public void processPrimaryAfterUpdate(List<Contact> contacts) {
+        Set<Id> accountIds = new Set<Id>();
+        for (Contact con : contacts) {
+            if (con.Is_Primary_Contact__c) {
+                accountIds.add(con.AccountId);
+            }
+        }
+        updateContactsAsync(new List<Id>(accountIds));
+    }
+
+    @future
+    private static void updateContactsAsync(List<Id> accountIds) {
+        List<Contact> contactsToUpdate = new List<Contact>();
+    for (Id accountId : accountIds) {
+        // İlgili Account'un birincil iletişim kişisini bul
+        Contact primaryContact = [
+            SELECT Phone
+            FROM Contact
+            WHERE AccountId = :accountId AND Is_Primary_Contact__c = true
+            LIMIT 1
+        ].get(0);
+
+        // Aynı Account'a ait diğer tüm iletişim kişilerini bul ve güncelle
+        List<Contact> relatedContacts = [
+            SELECT Id, Primary_Contact_Phone__c
+            FROM Contact
+            WHERE AccountId = :accountId AND Id != :primaryContact.Id
+        ];
+        
+        for (Contact c : relatedContacts) {
+            c.Primary_Contact_Phone__c = primaryContact.Phone;
+            contactsToUpdate.add(c);
         }
     }
     
-    @future
-    private static void processPrimaryAfterInsertAndUpdateAsync(List<Id> conIds) {
+    if (!contactsToUpdate.isEmpty()) {
         try {
-            List<Contact> consToUpdate = new List<Contact>();
-            List<Id> accIds = new List<Id>();
-            Map<Id, Contact> primaryContacts = new Map<Id, Contact>();
-            List<Contact> insertedContacts = [
-                SELECT
-                    Primary_Contact_Phone__c,
-                    Is_Primary_Contact__c,
-                    AccountId,
-                    Phone
-                FROM Contact
-                WHERE Id IN :conIds
-            ];
-            for (Contact c : insertedContacts) {
-                accIds.add(c.AccountId);
-                primaryContacts.put(c.AccountId, c);
-            }
-
-            List<Contact> oldContact = findOldContacts(accIds, false);
-            for (Contact c : oldContact) {
-                if (primaryContacts.containsKey(c.AccountId)) {
-                    c.Primary_Contact_Phone__c = primaryContacts.get(c.AccountId).Phone;
-                    consToUpdate.add(c);
-                    if (!consToUpdate.contains(primaryContacts.get(c.AccountId))) {
-                        primaryContacts.get(c.AccountId).Primary_Contact_Phone__c = primaryContacts.get(c.AccountId).Phone;
-                        consToUpdate.add(primaryContacts.get(c.AccountId));
-                    }
-                }
-            }
-
-            Database.update(consToUpdate, false);
+            // Partial success'i desteklemek için false kullan
+            Database.update(contactsToUpdate, false);
         } catch (Exception e) {
-            System.debug('Error: ' + e);
+            // Güncelleme sırasında bir hata oluşursa, uygun bir hata yönetimi stratejisi uygula
+            // Örneğin, bir sistem log'una yaz
+            System.debug('An error occurred while updating contacts: ' + e.getMessage());
+            // Gerçek bir uygulamada, hataları loglamak ve takip etmek için daha sofistike yöntemler kullanılmalıdır.
         }
     }
-  
-    public void validatePrimaryBeforeUpdate(List<Contact> con, Map<Id, Contact> conOldMap) {
-        try {
-            Map<Id, Contact> primaryContacts = new Map<Id, Contact>();
-            List<Contact> newPrimaryContacts = new List<Contact>();
-            List<Id> accIds = new List<Id>();
-            for (Contact c : con) {
-                if (c.Is_Primary_Contact__c && !conOldMap.get(c.Id).Is_Primary_Contact__c) {
-                    accIds.add(c.AccountId);
-                    newPrimaryContacts.add(c);
-                }
-            }
-            if (!accIds.isEmpty()) {
-                List<Contact> oldContact = findOldContacts(accIds, true);
-                for (Contact c : oldContact) {
-                    primaryContacts.put(c.AccountId, c);
-                }
-                for (Contact c : newPrimaryContacts) {
-                    if (primaryContacts.containsKey(c.AccountId)) {
-                        c.Is_Primary_Contact__c.addError(UPDATE_CONTACTS_ERROR);
-                    } else {
-                        primaryContacts.put(c.AccountId, c);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.debug('Error: ' + e);
-        }
-    }
-  
-    public void processPrimaryAfterUpdate(List<Contact> con) {
-        try {
-            List<Id> conIds = new List<Id>();
-            for (Contact c : con) {
-                if (c.Is_Primary_Contact__c == true) {
-                    conIds.add(c.Id);
-                }
-            }
-            if (!System.IsBatch() && !System.isFuture()) {
-                processPrimaryAfterInsertAndUpdateAsync(conIds);
-            }
-        } catch (Exception e) {
-            System.debug('Error: ' + e);
-        }
     }
 }
